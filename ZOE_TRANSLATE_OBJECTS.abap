@@ -42,8 +42,15 @@ SELECTION-SCREEN END OF LINE.
 CLASS lcl_main DEFINITION.
   PUBLIC SECTION.
     METHODS:
+      constructor
+        IMPORTING
+          i_lang_primary   TYPE spras
+          i_lang_translate TYPE spras,
       get_data,
       list_data.
+
+    DATA: language_primary   TYPE lxeisolang,
+          language_translate TYPE lxeisolang.
 ENDCLASS.
 
 CLASS lcl_handler DEFINITION.
@@ -181,6 +188,20 @@ CLASS lcl_main IMPLEMENTATION.
     ENDTRY.
 
   ENDMETHOD.
+  METHOD constructor.
+    SELECT SINGLE language
+      FROM lxe_t002x
+      WHERE r3_lang = @i_lang_primary
+      AND   language NOT LIKE '%++'
+      INTO @language_primary.
+
+    SELECT SINGLE language
+      FROM lxe_t002x
+      WHERE r3_lang = @i_lang_translate
+      AND   language NOT LIKE '%++'
+      INTO @language_translate.
+  ENDMETHOD.
+
 ENDCLASS.
 
 CLASS lcl_handler IMPLEMENTATION.
@@ -193,6 +214,7 @@ CLASS lcl_handler IMPLEMENTATION.
       TRY.
           gs_data = gt_data[ row ].
         CATCH cx_sy_itab_line_not_found.
+          RETURN.
       ENDTRY.
 
       PERFORM bdc_dynpro      USING 'SAPMTRAN' '1000'.
@@ -209,20 +231,10 @@ CLASS lcl_handler IMPLEMENTATION.
                                     gs_data-object.
       PERFORM bdc_field       USING 'DYNP_2000-O_REQUEST_OBJ_NAME'
                                     gs_data-obj_name.
-      SELECT SINGLE language
-        FROM lxe_t002x
-        WHERE r3_lang = @p_lanp
-        AND   language NOT LIKE '%++'
-        INTO @DATA(lv_language).
       PERFORM bdc_field       USING 'DYNP_2000-SLANG'
-                                    lv_language.
-      SELECT SINGLE language
-        FROM lxe_t002x
-        WHERE r3_lang = @p_lant
-        AND   language NOT LIKE '%++'
-        INTO @lv_language.
+                                    go_main->language_primary.
       PERFORM bdc_field       USING 'DYNP_2000-TLANG'
-                                    lv_language.
+                                    go_main->language_translate.
 
       CALL TRANSACTION 'SE63' USING bdcdata
                               MODE  'E'.
@@ -253,14 +265,15 @@ FORM bdc_field USING fnam fval.
   APPEND bdcdata.
 ENDFORM.
 
-************************************************************************
+*----------------------------------------------------------------------*
+*  INITIALIZATION.
+*----------------------------------------------------------------------*
 INITIALIZATION.
-  go_main = NEW #( ).
 
 *----------------------------------------------------------------------*
 *  AT SELECTION-SCREEN.
 *----------------------------------------------------------------------*
-*AT SELECTION-SCREEN.
+AT SELECTION-SCREEN.
 
 *----------------------------------------------------------------------*
 *  AT SELECTION-SCREEN OUTPUT.
@@ -271,6 +284,9 @@ AT SELECTION-SCREEN OUTPUT.
 *  START-OF-SELECTION.
 *----------------------------------------------------------------------*
 START-OF-SELECTION.
+  go_main = NEW #( i_lang_primary = p_lanp
+                   i_lang_translate = p_lant ).
+
   go_main->get_data( ).
 
 *----------------------------------------------------------------------*
