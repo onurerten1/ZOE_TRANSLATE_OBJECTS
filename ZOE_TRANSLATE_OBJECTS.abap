@@ -119,17 +119,19 @@ CLASS lcl_main IMPLEMENTATION.
                        | AND   t2~msgnr = t1~msgnr )|.
     ENDIF.
     LOOP AT gt_data INTO gs_data WHERE object = 'MSAG'.
-
-      SELECT t1~sprsl,
-             t1~arbgb,
-             t1~msgnr,
-             t1~text
-        FROM t100 AS t1
-        WHERE t1~sprsl = @p_lanp
-        AND   t1~arbgb = @gs_data-obj_name
-        AND (lv_where)
-        ORDER BY msgnr
-        INTO TABLE @DATA(lt_messages).
+      TRY.
+        SELECT t1~sprsl,
+               t1~arbgb,
+               t1~msgnr,
+               t1~text
+          FROM t100 AS t1
+          WHERE t1~sprsl = @p_lanp
+          AND   t1~arbgb = @gs_data-obj_name
+          AND (lv_where)
+          ORDER BY msgnr
+          INTO TABLE @DATA(lt_messages).
+      CATCH cx_sy_dynamic_osql_syntax.
+    ENDTRY.
 
       LOOP AT lt_messages INTO DATA(ls_messages).
         CLEAR lv_object_name.
